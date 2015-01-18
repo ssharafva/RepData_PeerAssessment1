@@ -49,10 +49,9 @@ Note that NA (missing) values are removed.
 
 
 ```r
-interval.averages <- cbind(unique(data$interval), 
+interval.averages <- cbind(as.integer(unique(data$interval)), 
                            data.frame(tapply(data$steps, data$interval, mean, 
-                                       simplify = TRUE, na.rm=TRUE),
-                                row.names=NULL))
+                                             simplify = TRUE, na.rm=TRUE)))
 colnames(interval.averages) <- c("Interval", "Steps")
 plot(interval.averages$Interval,interval.averages$Steps, type="l", 
      main = "Daily Average Steps for Each Interval", xlab = "Interval", 
@@ -64,7 +63,8 @@ plot(interval.averages$Interval,interval.averages$Steps, type="l",
 ```r
 ##max(interval.averages)
 interval.averages.maximum <- max(interval.averages$Steps)
-interval.averages.maximum.row <- (interval.averages[which.max(interval.averages$Steps),])
+interval.averages.maximum.row <- (interval.averages[which.max(
+    interval.averages$Steps),])
 ```
 
 The maxim average steps is 206.1698113 found in 
@@ -74,19 +74,104 @@ interval 835.
 
 
 ```r
-sum(is.na(data$steps))
+missing.values <- sum(is.na(data$steps))
+imputed.data <- data
+
+for (i in 1:17568){
+    if(is.na(imputed.data[i, "steps"])){
+        imputed.data[i, "steps"] <- interval.averages[interval.averages$Interval
+                                                      ==imputed.data[i,
+                                                      "interval"],2]
+    }
+}
+```
+
+2304 records have missing values. 
+We replaced the missing steps value in these records with the daily average 
+for that interval.
+We will now recalculate the total steps for each day and creates a histogram.
+We then report the mean and median of daily steps.
+
+
+```r
+new.daily.steps <- tapply(imputed.data$steps, imputed.data$date, sum)
+hist(new.daily.steps, main = "Histogram of (imputed) Daily Steps", 
+     xlab = "Total Steps")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-5-1.png) 
+
+```r
+new.daily.steps.mean <- as.integer(mean(new.daily.steps))
+new.daily.steps.median <- as.integer(median(new.daily.steps))
+```
+
+Clearly, the mean of daily steps went up from 9354.2295082 
+to 10766.
+The median of daily steps went up from 10395 to 
+10766.
+Additionally, the histogram shows that the frequency of peak number of total 
+daily steps (10,000 to 15,000) has gone up.
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+We now divide the imputed data into weekday and weekend groups and for each 
+group plot average steps for each interval for all days.
+
+
+```r
+library(dplyr)
 ```
 
 ```
-## [1] 2304
+## 
+## Attaching package: 'dplyr'
+## 
+## The following object is masked from 'package:stats':
+## 
+##     filter
+## 
+## The following objects are masked from 'package:base':
+## 
+##     intersect, setdiff, setequal, union
 ```
 
 ```r
-sum(complete.cases(data))
+imputed.data <- mutate(imputed.data, weekday = weekdays(as.Date(date)))
+imputed.data.weekend <- subset(imputed.data, weekday %in% c("Saturday", 
+                                                             "Sunday"))
+imputed.data.weekday <- subset(imputed.data, weekday %in% c("Monday", 
+                                                           "Tuesday",
+                                                           "Wednesday",
+                                                           "Thursday",
+                                                           "Friday"))
+
+interval.averages.weekday <- cbind(as.integer(unique(imputed.data.weekday$interval)), 
+                           data.frame(tapply(imputed.data.weekday$steps, 
+                                             imputed.data.weekday$interval, mean, 
+                                             simplify = TRUE, na.rm=TRUE)))
+colnames(interval.averages.weekday) <- c("Interval", "Steps")
+plot(interval.averages.weekday$Interval,interval.averages.weekday$Steps, 
+     type="l", 
+     main = "Weekday Average Steps for Each Interval", xlab = "Interval", 
+     ylab = "Average Steps")
 ```
 
-```
-## [1] 15264
+![](PA1_template_files/figure-html/unnamed-chunk-6-1.png) 
+
+```r
+interval.averages.weekend <- cbind(as.integer(unique(imputed.data.weekend$interval)), 
+                           data.frame(tapply(imputed.data.weekend$steps, 
+                                             imputed.data.weekend$interval, mean, 
+                                             simplify = TRUE, na.rm=TRUE)))
+colnames(interval.averages.weekend) <- c("Interval", "Steps")
+plot(interval.averages.weekend$Interval,interval.averages.weekend$Steps, 
+     type="l", 
+     main = "Weekend Average Steps for Each Interval", xlab = "Interval", 
+     ylab = "Average Steps")
 ```
 
-## Are there differences in activity patterns between weekdays and weekends?
+![](PA1_template_files/figure-html/unnamed-chunk-6-2.png) 
+
+The plots clearly show that there is more activity in the weekends compared to 
+weekdays.
